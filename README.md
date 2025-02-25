@@ -11,13 +11,13 @@ out: [ackermann_msgs/AckermannDrive.msg](https://docs.ros.org/en/noetic/api/acke
 ```commandline
 mkdir -p ~/ros2_ws/src
 cd ~/ros2_ws/src
-git clone https://github.com/leonardonels/LQR_ros2_node_project.git
+git clone https://github.com/leonardonels/lqr_ros2_node_project.git
 cd ~/ros2_ws
-colcon build --packages-select LQR_ros2_node_project --symlink-install
+colcon build --packages-select lqr_ros2_node_project --symlink-install
 source install/setup.bash
 ```
 ```commandline
-ros2 launch LQR_ros2_node_project lqr_node_launch.py
+ros2 launch lqr_ros2_node_project lqr_node_launch.py
 ```
 
 ## :notebook_with_decorative_cover: assumptions
