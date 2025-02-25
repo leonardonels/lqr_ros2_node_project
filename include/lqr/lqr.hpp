@@ -4,9 +4,9 @@
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 
-class LQRNode : public rclcpp::Node {
+class LQR : public rclcpp::Node {
 public:
-    LQRNode();
+    LQR();
 
 private:
     void odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg);

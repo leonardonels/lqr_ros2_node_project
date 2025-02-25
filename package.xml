@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>LQR_ros2_node_project</name>
+  <name>lqr_ros2_node_project</name>
   <version>0.1.0</version>
   <description>Un nodo ROS2 che legge i messaggi Odometry</description>
   <maintainer email="tu@email.com">Il tuo Nome</maintainer>

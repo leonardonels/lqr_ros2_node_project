@@ -1,5 +1,19 @@
 cmake_minimum_required(VERSION 3.5)
-project(LQR_ros2_node_project)
+project(lqr_ros2_node_project)
+
+# Default to C99
+if(NOT CMAKE_C_STANDARD)
+  set(CMAKE_C_STANDARD 99)
+endif()
+
+# Default to C++14
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 14)
+endif()
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic -O3) 
+endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -7,8 +21,20 @@ find_package(nav_msgs REQUIRED)
 
 include_directories(include)
 
+add_library(lqr src/lqr.cpp)
+
+ament_target_dependencies(
+  lqr 
+  rclcpp 
+  nav_msgs
+)
+
 add_executable(lqr_node src/lqr_node.cpp)
-ament_target_dependencies(lqr_node rclcpp nav_msgs)
+
+target_link_libraries(
+  lqr_node
+  lqr
+)
 
 install(TARGETS
   lqr_node
