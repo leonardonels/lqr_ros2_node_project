@@ -3,7 +3,7 @@
   <name>lqr_ros2_node_project</name>
   <version>0.1.0</version>
   <description>Un nodo ROS2 che legge i messaggi Odometry</description>
-  <maintainer email="tu@email.com">Il tuo Nome</maintainer>
+  <maintainer email="todo@email.com">Il tuo Nome</maintainer>
   <license>Apache-2.0</license>
 
   <depend>rclcpp</depend>

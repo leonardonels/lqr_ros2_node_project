@@ -1,4 +1,4 @@
-# LQR_ros2_node_project
+# lqr_ros2_node_project
 
 ## :memo: TODO
 in: [nav_msg/Odometry.msg](https://docs.ros.org/en/noetic/api/nav_msgs/html/msg/Odometry.html)
