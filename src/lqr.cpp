@@ -82,7 +82,7 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
     
     std::string package_share_directory = ament_index_cpp::get_package_share_directory("lqr_ros2_node_project");
     /*RCLCPP_INFO(this->get_logger(), "%s\n", package_share_directory.c_str());*/
-    std::string trajectory_csv = "/vallelunga_sampled.csv";
+    std::string trajectory_csv = "/vallelunga1_circuit.csv";
     PointCloud cloud = get_trajectory(package_share_directory+trajectory_csv);
 
     // Save the actual time to compute the time needed for the execution later

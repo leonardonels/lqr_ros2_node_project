@@ -42,8 +42,7 @@ DESTINATION lib/${PROJECT_NAME}
 )
 
 install(FILES
-  vallelunga_sampled.csv
-  vallelunga.csv
+  vallelunga1_circuit.csv
   DESTINATION share/${PROJECT_NAME}
 )
 
