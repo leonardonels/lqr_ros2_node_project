@@ -5,6 +5,16 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <vector>
 
+#define _USE_MATH_DEFINES
+
+struct Vector {
+    double x, y;
+};
+
+struct Vector3 {
+    double x, y, z;
+};
+
 struct Point {
     double x, y;
 };
@@ -12,6 +22,11 @@ struct Point {
 struct Odometry {
     Point pose;
     double yaw;
+};
+
+struct Waypoint {
+    Point pose;
+    double tangent;
 };
 
 // KD-tree adaptor for nanoflann
