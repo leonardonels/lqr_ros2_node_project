@@ -37,8 +37,15 @@ target_link_libraries(
 )
 
 install(TARGETS
-  lqr_node
-  DESTINATION lib/${PROJECT_NAME})
+lqr_node
+DESTINATION lib/${PROJECT_NAME}
+)
+
+install(FILES
+  vallelunga_sampled.csv
+  vallelunga.csv
+  DESTINATION share/${PROJECT_NAME}
+)
 
 install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}
