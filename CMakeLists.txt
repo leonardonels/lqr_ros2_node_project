@@ -18,6 +18,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 include_directories(include)
 
@@ -27,6 +28,7 @@ ament_target_dependencies(
   lqr 
   rclcpp 
   nav_msgs
+  Eigen3
 )
 
 add_executable(lqr_node src/lqr_node.cpp)

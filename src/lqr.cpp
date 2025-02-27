@@ -5,6 +5,8 @@
 #include <chrono>
 #include <filesystem>
 #include <math.h>
+#include <eigen3/Eigen/Geometry>
+#include <nav_msgs/msg/odometry.hpp>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include "lqr/lqr.hpp"
 #include "nanoflann/nanoflann.hpp"
@@ -122,6 +124,17 @@ double get_angular_deviation(double angle1, double angle2) {
     return diff;
 }
 
+double get_yaw(const nav_msgs::msg::Odometry::SharedPtr msg) {
+    Eigen::Quaterniond q(msg->pose.pose.orientation.w,
+                         msg->pose.pose.orientation.x,
+                         msg->pose.pose.orientation.y,
+                         msg->pose.pose.orientation.z);
+    
+    Eigen::Matrix3d r_matrix = q.toRotationMatrix();
+    
+    return atan2(r_matrix(2, 2), r_matrix(0, 2));
+}
+
 std::vector<double> get_tangent_angles(std::vector<Point> points)
 {
 
@@ -162,17 +175,23 @@ std::vector<double> get_tangent_angles(std::vector<Point> points)
 
 LQR::LQR() : Node("lqr_node") {
     //std::string package_share_directory = ament_index_cpp::get_package_share_directory("lqr_ros2_node_project");
-    subscription_ = this->create_subscription<nav_msgs::msg::Odometry>(
-    "/odometry", 10,
-    std::bind(&LQR::odometry_callback, this, std::placeholders::_1));
+    m_subscription = this->create_subscription<nav_msgs::msg::Odometry>(
+        "/odometry", 10,
+        std::bind(&LQR::odometry_callback, this, std::placeholders::_1));
+    
+    /* Define QoS for Best Effort messages transport */
+	auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_sensor_data);
+    // Create odom publisher
+    m_debug_publisher = this->create_publisher<nav_msgs::msg::Odometry>("/debug/odometry", qos);
 }
     
 void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
     
     // Get Data
     Point odometry_pose = { msg->pose.pose.position.x, msg->pose.pose.position.y };
-    Odometry odometry = {odometry_pose, msg->pose.pose.orientation.x};
+    Odometry odometry = {odometry_pose, get_yaw(msg)};
     RCLCPP_INFO(this->get_logger(), "odometry_pose: x=%.2f, y=%.2f", odometry_pose.x, odometry_pose.y);
+    RCLCPP_INFO(this->get_logger(), "yaw: %.2f", odometry.yaw);
     
     std::string package_share_directory = ament_index_cpp::get_package_share_directory("lqr_ros2_node_project");
     /*RCLCPP_INFO(this->get_logger(), "%s\n", package_share_directory.c_str());*/
@@ -238,4 +257,17 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     RCLCPP_INFO(this->get_logger(), "duration: %ld ms", duration);
+
+    nav_msgs::msg::Odometry debby;
+    debby.header.frame_id = "debby";
+    debby.child_frame_id = "imu_link";
+    debby.header.stamp = msg->header.stamp;
+    debby.pose.pose.position.x = closest_point.x;
+    debby.pose.pose.position.y = closest_point.y;
+    debby.pose.pose.position.z = odometry_pose.x;
+    debby.pose.pose.orientation.x = msg->pose.pose.orientation.x;
+    debby.pose.pose.orientation.y = msg->pose.pose.orientation.y;
+    debby.pose.pose.orientation.z = msg->pose.pose.orientation.z;
+    debby.pose.pose.orientation.w = odometry_pose.y;
+    m_debug_publisher->publish(debby);
 }

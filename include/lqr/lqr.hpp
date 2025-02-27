@@ -49,7 +49,8 @@ public:
 
 private:
     void odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
-    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subscription_;
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr m_subscription;
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr m_debug_publisher;
 };
 
 #endif
