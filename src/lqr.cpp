@@ -125,10 +125,10 @@ double get_angular_deviation(double angle1, double angle2) {
 }
 
 double get_yaw(const nav_msgs::msg::Odometry::SharedPtr msg) {
-    Eigen::Quaterniond q(msg->pose.pose.orientation.w,
-                         msg->pose.pose.orientation.x,
+    Eigen::Quaterniond q(msg->pose.pose.orientation.x,
                          msg->pose.pose.orientation.y,
-                         msg->pose.pose.orientation.z);
+                         msg->pose.pose.orientation.z,
+                         msg->pose.pose.orientation.w);
     
     Eigen::Matrix3d r_matrix = q.toRotationMatrix();
     
@@ -262,12 +262,11 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
     debby.header.frame_id = "debby";
     debby.child_frame_id = "imu_link";
     debby.header.stamp = msg->header.stamp;
-    debby.pose.pose.position.x = closest_point.x;
-    debby.pose.pose.position.y = closest_point.y;
-    debby.pose.pose.position.z = odometry_pose.x;
+    debby.pose.pose.position.x = odometry_pose.x;
+    debby.pose.pose.position.y = odometry_pose.y;
     debby.pose.pose.orientation.x = msg->pose.pose.orientation.x;
     debby.pose.pose.orientation.y = msg->pose.pose.orientation.y;
     debby.pose.pose.orientation.z = msg->pose.pose.orientation.z;
-    debby.pose.pose.orientation.w = odometry_pose.y;
+    debby.pose.pose.orientation.w = msg->pose.pose.orientation.w;
     m_debug_publisher->publish(debby);
 }
