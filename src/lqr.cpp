@@ -268,5 +268,7 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
     debby.pose.pose.orientation.y = msg->pose.pose.orientation.y;
     debby.pose.pose.orientation.z = msg->pose.pose.orientation.z;
     debby.pose.pose.orientation.w = msg->pose.pose.orientation.w;
+    debby.twist.twist.linear.x = closest_point.x;
+    debby.twist.twist.linear.y = closest_point.y;
     m_debug_publisher->publish(debby);
 }
