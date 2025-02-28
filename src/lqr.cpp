@@ -266,7 +266,7 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
     RCLCPP_INFO(this->get_logger(), "duration: %ld ms", duration);
 
     Eigen::Rotation2D<float> rot2(closest_point_tangent);
-    Eigen::Vector2f v = rot2*Eigen::Vector2f(msg->twist.twist.linear.x, msg->twist.twist.linear.y);
+    Eigen::Vector2f v = rot2*Eigen::Vector2f(0.0, msg->twist.twist.linear.y); // Rotate only the y component of the velocity w.r.t. the tangent angle
 
     nav_msgs::msg::Odometry debby;
     debby.header.frame_id = "debby";
@@ -280,8 +280,8 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
     debby.pose.pose.orientation.w = msg->pose.pose.orientation.w;
     debby.twist.twist.linear.x = closest_point.x;
     debby.twist.twist.linear.y = closest_point.y;
-    debby.pose.pose.position.z = v(0,0);
-    debby.twist.twist.linear.z = v(1,0);
+    debby.pose.pose.position.z = v(0);
+    debby.twist.twist.linear.z = v(1);
 
     m_debug_publisher->publish(debby);
 }
