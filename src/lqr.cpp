@@ -201,7 +201,7 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
     {
         m_loaded=true;
         std::string package_share_directory = ament_index_cpp::get_package_share_directory("lqr_ros2_node_project");
-        std::string trajectory_csv = "/vallelunga1_circuit.csv";
+        std::string trajectory_csv = "/vallelunga1_circuit_undersampled.csv";
         m_cloud = get_trajectory(package_share_directory+trajectory_csv);
     }
 
@@ -255,18 +255,25 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
     // Finally calculate the angular deviation between the odometry and the closest point on the trajectory
     double angular_deviation = get_angular_deviation(closest_point_tangent, odometry.yaw);
 
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
     RCLCPP_INFO(this->get_logger(), "odometry_pose: x=%.2f, y=%.2f", odometry_pose.x, odometry_pose.y);
     RCLCPP_INFO(this->get_logger(), "yaw: %.2f", odometry.yaw);
     RCLCPP_INFO(this->get_logger(), "Closest Point: x=%.2f, y=%.2f", closest_point.x, closest_point.y);
     RCLCPP_INFO(this->get_logger(), "lateral deviation: %.2f", lateral_deviation);
     RCLCPP_INFO(this->get_logger(), "angular deviation: %.2f", angular_deviation);
-    RCLCPP_INFO(this->get_logger(), "duration: %ld ms", duration);
 
-    Eigen::Rotation2D<float> rot2(closest_point_tangent);
-    Eigen::Vector2f v = rot2*Eigen::Vector2f(0.0, msg->twist.twist.linear.y); // Rotate only the y component of the velocity w.r.t. the tangent angle
+    // Ultimo try poi vado a letto
+    Eigen::Rotation2D<float> rot(closest_point_tangent);
+    Eigen::Vector2f v(msg->twist.twist.linear.x, msg->twist.twist.linear.y);
+    Eigen::Vector2f v_new = rot.inverse() * v;
+
+    // ChatGPT said that the component of my vector perpendicular to the direction is 
+    double lateral_deviation_speed = v_new.y();
+
+    // Now reconstruct the perpendicular component into the original frame of reference
+    Eigen::Vector2f d_perp(-std::sin(closest_point_tangent), std::cos(closest_point_tangent));
+    Eigen::Vector2f v_perp = v_new.y() * d_perp;
+
+    RCLCPP_INFO(this->get_logger(), "lateral deviation speed: %.4f", lateral_deviation_speed);
 
     nav_msgs::msg::Odometry debby;
     debby.header.frame_id = "debby";
@@ -280,8 +287,13 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
     debby.pose.pose.orientation.w = msg->pose.pose.orientation.w;
     debby.twist.twist.linear.x = closest_point.x;
     debby.twist.twist.linear.y = closest_point.y;
-    debby.pose.pose.position.z = v(0);
-    debby.twist.twist.linear.z = v(1);
+    debby.pose.pose.position.z = v_perp.x();
+    debby.twist.twist.linear.z = v_perp.y();
+
+    // No cheating
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    RCLCPP_INFO(this->get_logger(), "duration: %ld ms", duration);
 
     m_debug_publisher->publish(debby);
 }

@@ -45,6 +45,7 @@ DESTINATION lib/${PROJECT_NAME}
 
 install(FILES
   vallelunga1_circuit.csv
+  vallelunga1_circuit_undersampled.csv
   DESTINATION share/${PROJECT_NAME}
 )
 
