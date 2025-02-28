@@ -51,6 +51,8 @@ private:
     void odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr m_subscription;
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr m_debug_publisher;
+    PointCloud m_cloud;
+    bool m_loaded;
 };
 
 #endif

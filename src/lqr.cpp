@@ -179,6 +179,9 @@ LQR::LQR() : Node("lqr_node") {
         "/odometry", 10,
         std::bind(&LQR::odometry_callback, this, std::placeholders::_1));
     
+
+    m_loaded=false;   
+
     /* Define QoS for Best Effort messages transport */
 	auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_sensor_data);
     // Create odom publisher
@@ -187,23 +190,24 @@ LQR::LQR() : Node("lqr_node") {
     
 void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
     
-    // Get Data
-    Point odometry_pose = { msg->pose.pose.position.x, msg->pose.pose.position.y };
-    Odometry odometry = {odometry_pose, get_yaw(msg)};
-    RCLCPP_INFO(this->get_logger(), "odometry_pose: x=%.2f, y=%.2f", odometry_pose.x, odometry_pose.y);
-    RCLCPP_INFO(this->get_logger(), "yaw: %.2f", odometry.yaw);
-    
-    std::string package_share_directory = ament_index_cpp::get_package_share_directory("lqr_ros2_node_project");
-    /*RCLCPP_INFO(this->get_logger(), "%s\n", package_share_directory.c_str());*/
-    std::string trajectory_csv = "/vallelunga1_circuit.csv";
-    PointCloud cloud = get_trajectory(package_share_directory+trajectory_csv);
-
     // Save the actual time to compute the time needed for the execution later
     auto start = std::chrono::high_resolution_clock::now();
 
+    // Get Data
+    Point odometry_pose = { msg->pose.pose.position.x, msg->pose.pose.position.y };
+    Odometry odometry = {odometry_pose, get_yaw(msg)};
+    
+    if(!m_loaded)
+    {
+        m_loaded=true;
+        std::string package_share_directory = ament_index_cpp::get_package_share_directory("lqr_ros2_node_project");
+        std::string trajectory_csv = "/vallelunga1_circuit.csv";
+        m_cloud = get_trajectory(package_share_directory+trajectory_csv);
+    }
+
     // Find closest point to trajectory using KD-Tree from NanoFLANN
-    size_t closest_point_index = get_closest_point(cloud, odometry_pose);
-    Point closest_point = cloud.pts[closest_point_index];
+    size_t closest_point_index = get_closest_point(m_cloud, odometry_pose);
+    Point closest_point = m_cloud.pts[closest_point_index];
 
     // Calculate lateral deviation as distance between two points
     double lateral_deviation = distance(odometry_pose, closest_point);
@@ -211,20 +215,20 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
     // I have found the closest point on the trajectory to the odometry pose but I don't trust the result so I check if the previous or next point are closer to the odometry
     while(1)
     {
-        if(closest_point_index > 0 && closest_point_index < cloud.pts.size() - 1)
+        if(closest_point_index > 0 && closest_point_index < m_cloud.pts.size() - 1)
         {
-            double previuous_point_lateral_deviation = distance(odometry_pose, cloud.pts[closest_point_index - 1]);
-            double next_point_lateral_deviation = distance(odometry_pose, cloud.pts[closest_point_index + 1]);
+            double previuous_point_lateral_deviation = distance(odometry_pose, m_cloud.pts[closest_point_index - 1]);
+            double next_point_lateral_deviation = distance(odometry_pose, m_cloud.pts[closest_point_index + 1]);
             if(previuous_point_lateral_deviation < lateral_deviation)
             {
                 closest_point_index = closest_point_index - 1;
-                closest_point = cloud.pts[closest_point_index];
+                closest_point = m_cloud.pts[closest_point_index];
                 lateral_deviation = previuous_point_lateral_deviation;
             }
             else if(next_point_lateral_deviation < lateral_deviation)
             {
                 closest_point_index = closest_point_index + 1;
-                closest_point = cloud.pts[closest_point_index];
+                closest_point = m_cloud.pts[closest_point_index];
                 lateral_deviation = next_point_lateral_deviation;
             }
             else if(next_point_lateral_deviation > lateral_deviation && previuous_point_lateral_deviation > lateral_deviation)
@@ -237,25 +241,28 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
             break;
         }
     }
-    RCLCPP_INFO(this->get_logger(), "Closest Point: x=%.2f, y=%.2f", closest_point.x, closest_point.y);
 
     // At this point I have the closest point on the trajectory and the lateral deviation from the odometry to the trajectory
     // Now I need to find the angular deviation between the odometry and the trajectory
 
     // Compute for every point on the trajectory the tangent angle
-    std::vector<double> points_tangents = get_tangent_angles(cloud.pts); 
+    std::vector<double> points_tangents = get_tangent_angles(m_cloud.pts); 
     double closest_point_tangent = points_tangents[closest_point_index];
 
     double lateral_position = signed_distance(closest_point.x, closest_point.y, odometry_pose.x, odometry_pose.y, closest_point_tangent);
     lateral_deviation*=lateral_position;
-    RCLCPP_INFO(this->get_logger(), "lateral deviation: %.2f", lateral_deviation);
 
     // Finally calculate the angular deviation between the odometry and the closest point on the trajectory
     double angular_deviation = get_angular_deviation(closest_point_tangent, odometry.yaw);
-    RCLCPP_INFO(this->get_logger(), "angular deviation: %.2f", angular_deviation);
 
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    RCLCPP_INFO(this->get_logger(), "odometry_pose: x=%.2f, y=%.2f", odometry_pose.x, odometry_pose.y);
+    RCLCPP_INFO(this->get_logger(), "yaw: %.2f", odometry.yaw);
+    RCLCPP_INFO(this->get_logger(), "Closest Point: x=%.2f, y=%.2f", closest_point.x, closest_point.y);
+    RCLCPP_INFO(this->get_logger(), "lateral deviation: %.2f", lateral_deviation);
+    RCLCPP_INFO(this->get_logger(), "angular deviation: %.2f", angular_deviation);
     RCLCPP_INFO(this->get_logger(), "duration: %ld ms", duration);
 
     nav_msgs::msg::Odometry debby;
