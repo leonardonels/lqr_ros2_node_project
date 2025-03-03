@@ -1,0 +1,4 @@
+lqr_node:
+    ros__parameters:
+        debug_mode: false
+        input_msg:  "/odometry"

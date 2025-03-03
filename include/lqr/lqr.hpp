@@ -53,6 +53,7 @@ private:
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr m_debug_publisher;
     PointCloud m_cloud;
     bool m_loaded;
+    bool DEBUG;
 };
 
 #endif
