@@ -1,4 +1,8 @@
 lqr_node:
     ros__parameters:
         debug_mode: false
-        input_msg:  "/odometry"
+        input_msg: "/odometry"
+        vectors_k:
+          - "1.0 2.0 3.0 4.0 5.0"
+          - "6.0 7.0 8.0 9.0 10.0"
+          - "11.0 12.0 13.0 14.0 15.0"

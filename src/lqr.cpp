@@ -188,14 +188,46 @@ std::tuple<double, Eigen::Vector2f> get_lateral_deviation_components(const doubl
     return {lateral_deviation_speed, v_new.y() * d_perp};
 }
 
+double get_feedforward_term(const double K_3, const double mass, const double long_speed, const double curvature, const double frontal_lenght, const double rear_lenght, const double C_alpha_rear, const double C_alpha_front){
+    double df_c1 = (mass*std::pow(long_speed,2))/(curvature*(rear_lenght+frontal_lenght));
+    double df_c2 = (frontal_lenght / (2*C_alpha_front))-(rear_lenght / (2*C_alpha_rear)) + (frontal_lenght / (2*C_alpha_rear))*K_3;
+    double df_c3 = (rear_lenght+frontal_lenght)/curvature;
+    double df_c4 = (rear_lenght/curvature)*K_3;
+    return df_c1*df_c2+df_c3-df_c4;
+}
+
 LQR::LQR() : Node("lqr_node") {
     // Declare parameters
     this->declare_parameter<std::string>("input_msg", "");
     this->declare_parameter<bool>("debug_mode", false);
-
+    this->declare_parameter<std::vector<std::string>>("vectors_k", std::vector<std::string>{});
+    
     // Get parameters
     std::string input_msg = this->get_parameter("input_msg").get_value<std::string>();
     this->DEBUG = this->get_parameter("debug_mode").get_value<bool>();
+    std::vector<std::string> raw_vectors_k = this->get_parameter("vectors_k").as_string_array();
+
+    std::vector<std::pair<double, std::vector<double>>> k_pair;
+    for (const auto& vec_str : raw_vectors_k) {
+        std::stringstream ss(vec_str);
+        double first_value;
+        std::vector<double> values;
+        if (ss >> first_value) {
+            double num;
+            while (ss >> num) {
+                values.push_back(num);
+            }
+            k_pair.emplace_back(first_value, values);
+        }
+    }
+
+    for (size_t i = 0; i < std::min(k_pair.size(), static_cast<size_t>(3)); i++) {
+        if (k_pair[i].second.size() > 3) {
+            RCLCPP_INFO(this->get_logger(), "k%zu: %f, %f", i + 1, k_pair[i].first, k_pair[i].second[3]);
+        } else {
+            RCLCPP_WARN(this->get_logger(), "k%zu: %f, ma il vettore non ha abbastanza elementi", i + 1, k_pair[i].first);
+        }
+    }
 
     //std::string package_share_directory = ament_index_cpp::get_package_share_directory("lqr_ros2_node_project");
     m_subscription = this->create_subscription<nav_msgs::msg::Odometry>(
@@ -289,6 +321,8 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
     
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    //auto delta_f = get_feedforward_term();
 
     if(DEBUG){RCLCPP_INFO(this->get_logger(), "odometry_pose: x=%.2f, y=%.2f", odometry_pose.x, odometry_pose.y);}
     if(DEBUG){RCLCPP_INFO(this->get_logger(), "yaw: %.2f", odometry.yaw);}
