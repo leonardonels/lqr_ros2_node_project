@@ -18,6 +18,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 include_directories(include)
@@ -28,6 +29,7 @@ ament_target_dependencies(
   lqr 
   rclcpp 
   nav_msgs
+  visualization_msgs
   Eigen3
 )
 

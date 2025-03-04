@@ -1,7 +1,15 @@
 lqr_node:
     ros__parameters:
-        debug_mode: false
-        input_msg: "/odometry"
+        debug_mode: true
+        first_lap:  false
+        odom_topic: "/odometry"
+        debug_odom_topic: "/debug/odometry"
+        partial_traj_topic: "/planning/centerline"
+        car_mass: 270.0
+        front_length: 1.10
+        rear_length: 0.60
+        C_alpha_front: 10000.0
+        C_alpha_rear: 10000.0
         vectors_k:
           - "1.0 2.0 3.0 4.0 5.0"
           - "6.0 7.0 8.0 9.0 10.0"
