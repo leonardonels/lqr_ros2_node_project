@@ -221,19 +221,19 @@ std::vector<double> get_csv_column(const std::string& trajectory_csv, int column
     return values;
 }
 
-double get_longitudinal_speed(double yaw, const nav_msgs::msg::Odometry::SharedPtr msg)
-{
-    Eigen::Rotation2D<double> rot(yaw);    // rotation transformation local -> global
-    Eigen::Vector2d v(msg->twist.twist.linear.x, msg->twist.twist.linear.y);
-    Eigen::Vector2d v_new = rot.inverse() * v;  // with the inverse rotation matrix global -> local
-    return v_new.x();
-}
+// double get_longitudinal_speed(double yaw, const nav_msgs::msg::Odometry::SharedPtr msg)
+// {
+//     Eigen::Rotation2D<double> rot(yaw);    // rotation transformation local -> global
+//     Eigen::Vector2d v(msg->twist.twist.linear.x, msg->twist.twist.linear.y);
+//     Eigen::Vector2d v_new = rot.inverse() * v;  // with the inverse rotation matrix global -> local
+//     return v_new.x();
+// }
 
 std::tuple<double, Eigen::Vector2d> get_lateral_deviation_components(const double closest_point_tangent, const nav_msgs::msg::Odometry::SharedPtr msg)
 {
     // Rotate the velocity vector into the Local Frame
     Eigen::Rotation2D<double> rot(closest_point_tangent);    // rotation transformation local -> global
-    Eigen::Vector2d v(msg->twist.twist.linear.x, msg->twist.twist.linear.y);
+    Eigen::Vector2d v(msg->twist.twist.linear.x, msg->twist.twist.linear.y); // components of the velocity vector
     // Decomposes the velocity into longitudinal (x) and lateral (y) components
     Eigen::Vector2d v_new = rot.inverse() * v;  // with the inverse rotation matrix global -> local
 
@@ -460,7 +460,7 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     double angular_deviation = get_angular_deviation(closest_point_tangent, odometry.yaw);
 
     // Lastly compute the lateral deviation speed and lateral deviation vector
-    auto [lateral_deviation_speed, v_ld] = get_lateral_deviation_components(closest_point_tangent, msg);
+    auto [lateral_deviation_speed, v_ld] = get_lateral_deviation_components(closest_point_tangent,msg);
 
     // The angular deviation speed is free and comes from the odometry
     double angular_deviation_speed = msg->twist.twist.angular.z;
@@ -479,7 +479,7 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
 
     // Now we need to calculate Vx and and the curvature radious
     // Be very careful that Vx is expressed in the global frame but we need it in the car reference frame so we need to make again the rotation, this time w.r.t. the yaw
-    double Vx = get_longitudinal_speed(odometry.yaw, msg);
+    double Vx = msg->twist.twist.linear.x;
     double R_c = m_points_curvature_radius[closest_point_index];
 
     // Now we compute the feedforward term
