@@ -77,7 +77,6 @@ PointCloud get_trajectory(const std::string& trajectory_csv)
     return cloud;
 }
 
-
 size_t get_closest_point(const PointCloud& cloud, const Point& odometry_pose)
 {
     if (cloud.pts.empty()) {
@@ -355,6 +354,7 @@ void LQR::initialize()
     m_is_loaded=false;   
 }
 
+
 LQR::LQR() : Node("lqr_node") 
 {
     this->initialize();
@@ -500,23 +500,28 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     double throttle = calculate_throttle(speed_in_module, target_speed);
 
     // Now we have the steering and the throttle, we can create a message and publish it
-
     ackermann_msgs::msg::AckermannDriveStamped control_msg;
     control_msg.header.stamp = this->get_clock()->now();
-    control_msg.header.frame_id = "debby"; 
+    control_msg.header.frame_id = "acky"; 
     control_msg.drive.steering_angle = steering;
     control_msg.drive.acceleration = throttle;
     m_control_pub->publish(control_msg);
     
     auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
-    if(m_is_DEBUG){RCLCPP_INFO(this->get_logger(), "odometry_pose: x=%.2f, y=%.2f", odometry_pose.x, odometry_pose.y);}
-    if(m_is_DEBUG){RCLCPP_INFO(this->get_logger(), "yaw: %.2f", odometry.yaw);}
-    if(m_is_DEBUG){RCLCPP_INFO(this->get_logger(), "Closest Point: x=%.2f, y=%.2f", closest_point.x, closest_point.y);}
-    RCLCPP_INFO(this->get_logger(), "steering: %.4f", steering);
-    RCLCPP_INFO(this->get_logger(), "x: [%.2f,%.2f,%.2f,%.2f]", x[0],x[1],x[2],x[3]);
-    RCLCPP_INFO(this->get_logger(), "duration: %ld ms", duration);
+
+
+    
+    
+    if(m_is_DEBUG){
+        RCLCPP_INFO(this->get_logger(), "odometry_pose: x=%.2f, y=%.2f", odometry_pose.x, odometry_pose.y);
+        RCLCPP_INFO(this->get_logger(), "yaw: %.2f", odometry.yaw);
+        RCLCPP_INFO(this->get_logger(), "Closest Point: x=%.2f, y=%.2f", closest_point.x, closest_point.y);
+        RCLCPP_INFO(this->get_logger(), "steering: %.4f", steering);
+        RCLCPP_INFO(this->get_logger(), "x: [%.2f,%.2f,%.2f,%.2f]", x[0],x[1],x[2],x[3]);
+        RCLCPP_INFO(this->get_logger(), "duration: %ld ns", duration);
+    }
 
     if(m_is_DEBUG)
     {
