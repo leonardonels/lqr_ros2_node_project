@@ -1,10 +1,15 @@
 lqr_node:
     ros__parameters:
-        debug_mode: true
-        first_lap:  false
+        is_debug_mode: true
+        is_first_lap:  false
+        is_constant_speed: true
+        target_speed: 5.0
+        trajectory_filename: "/vallelunga_with_curvatures_modified.csv"
         odom_topic: "/odometry"
+        control_topic: "/control"
         debug_odom_topic: "/debug/odometry"
         partial_traj_topic: "/planning/centerline"
+        dummy_proportionality_constant: 10.0
         car_mass: 270.0
         front_length: 1.10
         rear_length: 0.60

@@ -3,6 +3,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+#include <ackermann_msgs/msg/ackermann_drive_stamped.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 #include <eigen3/Eigen/Geometry>
 #include <vector>
@@ -59,25 +60,33 @@ private:
     void initialize();
     void load_parameters();
     Eigen::Vector4d find_optimal_control_vector(double speed);
-    double calculate_throttle();
+    double calculate_throttle(double speed, double target_speed);
 
     // pubs and subs
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr m_odom_sub;
-    rclcpp::Subscription<visualization_msgs::msg::Marker>::SharedPtr m_partial_traj_sub;
+    rclcpp::Subscription<visualization_msgs::msg::Marker>::SharedPtr m_partial_traj_sub; // we will use it in the first_lap mode
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr m_debug_odom_pub;
+    rclcpp::Publisher<ackermann_msgs::msg::AckermannDriveStamped>::SharedPtr m_control_pub;
     
     //topics
     std::string m_odom_topic;
+    std::string m_control_topic;
     std::string m_partial_traj_topic;
     std::string m_debug_odom_topic;
    
     // class members
     std::vector<std::string> m_raw_vectors_k;
     std::vector<std::pair<double, std::vector<double>>> m_k_pair;
+    std::vector<double> m_points_tangents; // calculated by out node
+    std::vector<double> m_points_curvature_radius; // calculated offline on matlab for now (we will have to implement this ourselves)
+    std::vector<double> m_points_target_speed; // calculated offline on matlab always
     PointCloud m_cloud;
-    bool m_first_lap; // for now we statically decide if we want to use the partial trajectory or we want to use the global trajectory
-    bool m_loaded;
-    bool m_DEBUG;
+    bool m_is_first_lap; // for now we statically decide if we want to use the partial trajectory or we want to use the global trajectory
+    bool m_is_loaded;
+    bool m_is_DEBUG;
+    bool m_is_constant_speed;
+    double m_target_speed;
+    std::string m_csv_filename;
 
     // car physical parameters
     double m_mass;
@@ -85,6 +94,7 @@ private:
     double rear_length;
     double C_alpha_front;
     double C_alpha_rear;
+    double m_dummy_proportionality_constant;
 };
 
 #endif

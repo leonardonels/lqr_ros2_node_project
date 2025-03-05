@@ -41,18 +41,33 @@ PointCloud get_trajectory(const std::string& trajectory_csv)
     
     while (std::getline(file, line)) {
         std::stringstream ss(line);
-        std::string x_str, y_str;
-        std::getline(ss, x_str, ',');
-        std::getline(ss, y_str, ',');
+        std::vector<std::string> tokens;
+        std::string token;
         
-        if (!x_str.empty() && !y_str.empty() && x_str != "x") {
-            try {
-                cloud.pts.push_back({std::stod(x_str), std::stod(y_str)});
-            } catch (const std::exception& e) {
-                std::cerr << "Error parsing line: " << line << " (" << e.what() << ")\n";
-            }
+        // Read all tokens from the line separated by commas.
+        while (std::getline(ss, token, ',')) {
+            tokens.push_back(token);
+        }
+        
+        // Skip lines with fewer than 2 columns.
+        if (tokens.size() < 2) {
+            continue;
+        }
+        
+        // Skip the header row if the first token is "x"
+        if (tokens[0] == "x") {
+            continue;
+        }
+        
+        try {
+            double x = std::stod(tokens[0]);
+            double y = std::stod(tokens[1]);
+            cloud.pts.push_back({x, y});
+        } catch (const std::exception& e) {
+            std::cerr << "Error parsing line: " << line << " (" << e.what() << ")\n";
         }
     }
+    
     file.close();
     
     if (cloud.pts.empty()) {
@@ -61,6 +76,7 @@ PointCloud get_trajectory(const std::string& trajectory_csv)
     
     return cloud;
 }
+
 
 size_t get_closest_point(const PointCloud& cloud, const Point& odometry_pose)
 {
@@ -172,6 +188,39 @@ std::vector<double> get_tangent_angles(std::vector<Point> points)
     return tangent_angles;
 }
 
+std::vector<double> get_csv_column(const std::string& trajectory_csv, int column)
+{
+    std::vector<double> values;
+    std::ifstream file(trajectory_csv);
+    
+    if (!file.is_open()) {
+        throw std::runtime_error("Error: Could not open file " + trajectory_csv);
+    }
+    
+    std::string line;
+    while (std::getline(file, line)) {
+        std::istringstream lineStream(line);
+        std::string token;
+        int currentColumn = 0;
+        
+        // Process each token separated by commas
+        while (std::getline(lineStream, token, ',')) {
+            if (currentColumn == column) {
+                try {
+                    double value = std::stod(token);
+                    values.push_back(value);
+                } catch (const std::exception& e) {
+                    std::cerr << "Conversion error for token: " << token << "\n";
+                }
+                break; // We only need the specified column, so break out of the inner loop.
+            }
+            ++currentColumn;
+        }
+    }
+    
+    return values;
+}
+
 double get_longitudinal_speed(double yaw, const nav_msgs::msg::Odometry::SharedPtr msg)
 {
     Eigen::Rotation2D<double> rot(yaw);    // rotation transformation local -> global
@@ -226,10 +275,10 @@ Eigen::Vector4d LQR::find_optimal_control_vector(double speed_in_module)
     return optimal_control_vector;
 }
 
-double LQR::calculate_throttle(/*double speed_in_module, double target_speed*/)
+double LQR::calculate_throttle(double speed_in_module, double target_speed)
 {
-    return 0.0;
-    //TODO: implement this function
+    double speed_difference = target_speed - speed_in_module;
+    return speed_difference * m_dummy_proportionality_constant;
 }
 
 void LQR::load_parameters()
@@ -238,6 +287,9 @@ void LQR::load_parameters()
     this->declare_parameter<std::string>("odom_topic", "");
     m_odom_topic = this->get_parameter("odom_topic").get_value<std::string>();
 
+    this->declare_parameter<std::string>("control_topic", "");
+    m_control_topic = this->get_parameter("control_topic").get_value<std::string>();
+
     this->declare_parameter<std::string>("partial_traj_topic", "");
     m_partial_traj_topic = this->get_parameter("partial_traj_topic").get_value<std::string>();
 
@@ -245,15 +297,27 @@ void LQR::load_parameters()
     m_debug_odom_topic = this->get_parameter("debug_odom_topic").get_value<std::string>();
 
     // hyperparams
-    this->declare_parameter<bool>("first_lap", false);
-    m_first_lap = this->get_parameter("first_lap").get_value<bool>();
+    this->declare_parameter<bool>("is_first_lap", false);
+    m_is_first_lap = this->get_parameter("is_first_lap").get_value<bool>();
 
-    this->declare_parameter<bool>("debug_mode", false);
-    m_DEBUG = this->get_parameter("debug_mode").get_value<bool>();
+    this->declare_parameter<bool>("is_constant_speed", true);
+    m_is_constant_speed = this->get_parameter("is_constant_speed").get_value<bool>();
+
+    this->declare_parameter<std::string>("trajectory_filename", "");
+    m_csv_filename = this->get_parameter("trajectory_filename").get_value<std::string>();
+
+    this->declare_parameter<bool>("is_debug_mode", true);
+    m_is_DEBUG = this->get_parameter("is_debug_mode").get_value<bool>();
 
     // actual params
     this->declare_parameter<std::vector<std::string>>("vectors_k", std::vector<std::string>{});
     m_raw_vectors_k = this->get_parameter("vectors_k").as_string_array();
+
+    this->declare_parameter<double>("target_speed", 0.0);
+    m_target_speed = this->get_parameter("target_speed").get_value<double>();
+
+    this->declare_parameter<double>("dummy_proportionality_constant", 0.0);
+    m_dummy_proportionality_constant = this->get_parameter("dummy_proportionality_constant").get_value<double>();
 
     this->declare_parameter<double>("mass", 0.0);
     m_mass = this->get_parameter("mass").get_value<double>();
@@ -279,22 +343,23 @@ void LQR::initialize()
     // Initialize pubs and subs
     m_odom_sub = this->create_subscription<nav_msgs::msg::Odometry>(m_odom_topic, 10, std::bind(&LQR::odometry_callback, this, std::placeholders::_1));
     m_partial_traj_sub = this->create_subscription<visualization_msgs::msg::Marker>(m_partial_traj_topic, 10, std::bind(&LQR::partial_trajectory_callback, this, std::placeholders::_1));
+    m_control_pub = this->create_publisher<ackermann_msgs::msg::AckermannDriveStamped>(m_control_topic, 10);
 
-    if(m_DEBUG){
+    if(m_is_DEBUG){
         /* Define QoS for Best Effort messages transport */
         auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_sensor_data);
         // Create odom publisher
         m_debug_odom_pub = this->create_publisher<nav_msgs::msg::Odometry>(m_debug_odom_topic, qos);
     }
 
-    m_loaded=false;   
+    m_is_loaded=false;   
 }
 
 LQR::LQR() : Node("lqr_node") 
 {
     this->initialize();
 
-    // extract optimal control vectors k (each one associated to its relative velocity)
+    // extract optimal control vectors k from params file (each one associated to its relative velocity)
     for (const auto& vec_str : m_raw_vectors_k) {
         std::stringstream ss(vec_str);
         double first_value;
@@ -326,11 +391,10 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     Point odometry_pose = { msg->pose.pose.position.x, msg->pose.pose.position.y };
     Odometry odometry = {odometry_pose, get_yaw(msg)};
     
-    if(!m_loaded && !m_first_lap)
+    if(!m_is_loaded && !m_is_first_lap) // if instead we are in the first lap the trajectory should come from the callback. We don't care about it for now
     {
-        m_loaded=true;
         std::string package_share_directory = ament_index_cpp::get_package_share_directory("lqr_ros2_node_project");
-        std::string trajectory_csv = "/vallelunga1_circuit.csv";
+        std::string trajectory_csv = m_csv_filename;
         m_cloud = get_trajectory(package_share_directory+trajectory_csv);
     }
 
@@ -373,13 +437,22 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
 
     // At this point I have the closest point on the trajectory and the lateral deviation from the odometry to the trajectory
     // Now I need to find the angular deviation between the odometry and the trajectory
-
     // Compute for every point on the trajectory the tangent angle
-    // TODO: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!EXTRACT THIS FROM THE CALLBACK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    std::vector<double> points_tangents = get_tangent_angles(m_cloud.pts); 
-    double closest_point_tangent = points_tangents[closest_point_index];
+    if (!m_is_loaded) // we only want to do it once
+    {
+        m_points_tangents = get_tangent_angles(m_cloud.pts); 
 
-    // Now i can use the dot product to compute a signed distance and use this sign to establish where i am w.r.t. the race line
+        std::string package_share_directory = ament_index_cpp::get_package_share_directory("lqr_ros2_node_project");
+        std::string trajectory_csv = m_csv_filename;
+        m_points_curvature_radius = get_csv_column(package_share_directory+trajectory_csv, 2); // for now let's say that the curvature is stored in the 3rd column of the csv file
+        m_points_target_speed = get_csv_column(package_share_directory+trajectory_csv, 3); // for now let's say that the target speed is stored in the 4th column of the csv file
+
+        m_is_loaded = true;
+    }
+
+    double closest_point_tangent = m_points_tangents[closest_point_index];
+
+    // Now i can use the dot product to compute a signed distance and use this sign to establish where I am w.r.t. the race line
     double lateral_position = signed_distance(closest_point.x, closest_point.y, odometry_pose.x, odometry_pose.y, closest_point_tangent);
     lateral_deviation*=lateral_position;
 
@@ -388,10 +461,13 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
 
     // Lastly compute the lateral deviation speed and lateral deviation vector
     auto [lateral_deviation_speed, v_ld] = get_lateral_deviation_components(closest_point_tangent, msg);
-    
-    // Now that we have all we need, we can build the x vector for LQR
+
+    // The angular deviation speed is free and comes from the odometry
+    double angular_deviation_speed = msg->twist.twist.angular.z;
+
+    // NOW WE HAVE ALL THE COMPONENTS OF THE STATE VECTOR OF THE CAR
     Eigen::Vector4d x;
-    x << lateral_deviation, lateral_deviation_speed, angular_deviation, msg->twist.twist.angular.z;
+    x << lateral_deviation, lateral_deviation_speed, angular_deviation, angular_deviation_speed;
 
     // Now we find the optimal control vector k based on the current speed
     double speed_in_module = std::sqrt(std::pow(msg->twist.twist.linear.x, 2) + std::pow(msg->twist.twist.linear.y, 2));
@@ -404,26 +480,45 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     // Now we need to calculate Vx and and the curvature radious
     // Be very careful that Vx is expressed in the global frame but we need it in the car reference frame so we need to make again the rotation, this time w.r.t. the yaw
     double Vx = get_longitudinal_speed(odometry.yaw, msg);
-    double R_c = std::numeric_limits<double>::infinity(); // TODO: CALCULATE TRACK CURVATURE FOR EACH POINT ONCE AND THEN LOOK IT UP HERE
+    double R_c = m_points_curvature_radius[closest_point_index];
+
     // Now we compute the feedforward term
     double delta_f = get_feedforward_term(K_3, m_mass, Vx, R_c, front_length, rear_length, C_alpha_rear, C_alpha_front);
     
     steering = steering - delta_f; // this is my actual steering target
 
-    // Now we have to caluculate the longitudinal control input
-    double throttle = calculate_throttle(/*speed_in_module, target_speed*/);
+    // NOW WE HAVE TO CALCULATE THE LONGITUDINAL CONTROL
+    double target_speed = 0.0;
+    if (m_is_constant_speed) // if we are in constant speed mode
+    {
+        target_speed = m_target_speed;
+    }
+    else
+    {
+        target_speed = m_points_target_speed[closest_point_index];
+    }
+    double throttle = calculate_throttle(speed_in_module, target_speed);
+
+    // Now we have the steering and the throttle, we can create a message and publish it
+
+    ackermann_msgs::msg::AckermannDriveStamped control_msg;
+    control_msg.header.stamp = this->get_clock()->now();
+    control_msg.header.frame_id = "debby"; 
+    control_msg.drive.steering_angle = steering;
+    control_msg.drive.acceleration = throttle;
+    m_control_pub->publish(control_msg);
     
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    if(m_DEBUG){RCLCPP_INFO(this->get_logger(), "odometry_pose: x=%.2f, y=%.2f", odometry_pose.x, odometry_pose.y);}
-    if(m_DEBUG){RCLCPP_INFO(this->get_logger(), "yaw: %.2f", odometry.yaw);}
-    if(m_DEBUG){RCLCPP_INFO(this->get_logger(), "Closest Point: x=%.2f, y=%.2f", closest_point.x, closest_point.y);}
+    if(m_is_DEBUG){RCLCPP_INFO(this->get_logger(), "odometry_pose: x=%.2f, y=%.2f", odometry_pose.x, odometry_pose.y);}
+    if(m_is_DEBUG){RCLCPP_INFO(this->get_logger(), "yaw: %.2f", odometry.yaw);}
+    if(m_is_DEBUG){RCLCPP_INFO(this->get_logger(), "Closest Point: x=%.2f, y=%.2f", closest_point.x, closest_point.y);}
     RCLCPP_INFO(this->get_logger(), "steering: %.4f", steering);
     RCLCPP_INFO(this->get_logger(), "x: [%.2f,%.2f,%.2f,%.2f]", x[0],x[1],x[2],x[3]);
     RCLCPP_INFO(this->get_logger(), "duration: %ld ms", duration);
 
-    if(m_DEBUG)
+    if(m_is_DEBUG)
     {
         nav_msgs::msg::Odometry debby;
         debby.header.frame_id = "debby";
@@ -445,7 +540,7 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
 
 void LQR::partial_trajectory_callback(const visualization_msgs::msg::Marker traj)
 {
-    if(!m_first_lap) // only execute this if we are in the first lap
+    if(!m_is_first_lap) // only execute this if we are in the first lap
     {
         return;
     }

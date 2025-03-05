@@ -18,6 +18,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(ackermann_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
 
@@ -29,6 +30,7 @@ ament_target_dependencies(
   lqr 
   rclcpp 
   nav_msgs
+  ackermann_msgs
   visualization_msgs
   Eigen3
 )
@@ -48,6 +50,7 @@ DESTINATION lib/${PROJECT_NAME}
 install(FILES
   vallelunga1_circuit.csv
   vallelunga1_circuit_undersampled.csv
+  vallelunga_with_curvatures_modified.csv
   DESTINATION share/${PROJECT_NAME}
 )
 
