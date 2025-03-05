@@ -229,15 +229,14 @@ std::vector<double> get_csv_column(const std::string& trajectory_csv, int column
 //     return v_new.x();
 // }
 
-std::tuple<double, Eigen::Vector2d> get_lateral_deviation_components(const double closest_point_tangent, const nav_msgs::msg::Odometry::SharedPtr msg)
+std::tuple<double, Eigen::Vector2d> get_lateral_deviation_components(const double angular_dev, const double closest_point_tangent, const nav_msgs::msg::Odometry::SharedPtr msg)
 {
-    // Rotate the velocity vector into the Local Frame
-    Eigen::Rotation2D<double> rot(closest_point_tangent);    // rotation transformation local -> global
-    Eigen::Vector2d v(msg->twist.twist.linear.x, msg->twist.twist.linear.y); // components of the velocity vector
-    // Decomposes the velocity into longitudinal (x) and lateral (y) components
-    Eigen::Vector2d v_new = rot.inverse() * v;  // with the inverse rotation matrix global -> local
+    // Rotate the velocity vector from the car frame to the tangent frame by using the angular deviation
+    Eigen::Rotation2D<double> rot(angular_dev);   
+    Eigen::Vector2d v(msg->twist.twist.linear.x, msg->twist.twist.linear.y); // components of the velocity vector w.r.t. the car frame
+    Eigen::Vector2d v_new = rot.inverse() * v;  // we use inverse because we want to rotate the velocity vector by -angular_dev
 
-    double lateral_deviation_speed = v_new.y();
+    double lateral_deviation_speed = v_new.y(); // here we find the perpendicular component
 
     // Now reconstruct the perpendicular component into the original frame of reference
     Eigen::Vector2d d_perp(-std::sin(closest_point_tangent), std::cos(closest_point_tangent));
@@ -460,7 +459,7 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     double angular_deviation = get_angular_deviation(closest_point_tangent, odometry.yaw);
 
     // Lastly compute the lateral deviation speed and lateral deviation vector
-    auto [lateral_deviation_speed, v_ld] = get_lateral_deviation_components(closest_point_tangent,msg);
+    auto [lateral_deviation_speed, v_ld] = get_lateral_deviation_components(angular_deviation, closest_point_tangent, msg);
 
     // The angular deviation speed is free and comes from the odometry
     double angular_deviation_speed = msg->twist.twist.angular.z;
