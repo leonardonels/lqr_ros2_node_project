@@ -5,7 +5,10 @@ in: [nav_msg/Odometry.msg](https://docs.ros.org/en/noetic/api/nav_msgs/html/msg/
 out: [ackermann_msgs/AckermannDrive.msg](https://docs.ros.org/en/noetic/api/ackermann_msgs/html/msg/AckermannDrive.html)
 
 ## :package: Prerequisite packages
-> What we need is ros2 humble
+> What we need is ros2 humble and ros-humble-ackermann-msgs
+```
+sudo apt install ros-humble-ackermann-msgs
+```
 
 ## :gear: How to build & Run
 ```commandline

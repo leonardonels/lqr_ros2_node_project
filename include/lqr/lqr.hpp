@@ -10,36 +10,24 @@
 
 #define _USE_MATH_DEFINES
 
-struct Vector {
-    double x, y;
-};
-
-struct Vector3 {
-    double x, y, z;
-};
-
-struct Point {
-    double x, y;
-};
-
 struct Odometry {
-    Point pose;
+    Eigen::Vector2f pose;
     double yaw;
 };
 
 struct Waypoint {
-    Point pose;
+    Eigen::Vector2f pose;
     double tangent;
 };
 
 // KD-tree adaptor for nanoflann
 struct PointCloud {
-    std::vector<Point> pts;
+    std::vector<Eigen::Vector2f> pts;
 
     inline size_t kdtree_get_point_count() const { return pts.size(); }
 
     inline double kdtree_get_pt(const size_t idx, const size_t dim) const {
-        return (dim == 0) ? pts[idx].x : pts[idx].y;
+        return (dim == 0) ? pts[idx][0] : pts[idx][1];
     }
 
     template <class BBOX>
