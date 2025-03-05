@@ -11,22 +11,22 @@
 #include "lqr/lqr.hpp"
 #include "nanoflann/nanoflann.hpp"
 
-Vector3 crossProduct(const Vector3& A, const Vector3& B) {
+Eigen::Vector3f crossProduct(const Eigen::Vector3f& A, const Eigen::Vector3f& B) {
     return { 
         0, 
         0, 
-        A.x * B.y - A.y * B.x
+        A[0] * B[1] - A[1] * B[0]
     };
 }
 
-Point subtract(const Point &a, const Point &b) {
-    return {a.x - b.x, a.y - b.y};
+Eigen::Vector2f subtract(const Eigen::Vector2f &a, const Eigen::Vector2f &b) {
+    return {a[0] - b[0], a[1] - b[1]};
 }
 
-Point normalize(const Point &p) {
-    double len = std::sqrt(p.x * p.x + p.y * p.y);
+Eigen::Vector2f normalize(const Eigen::Vector2f &p) {
+    double len = std::sqrt(p[0] * p[0] + p[1] * p[1]);
     if (len == 0) return {0, 0};  // Prevent division by zero
-    return {p.x / len, p.y / len};
+    return {p[0] / len, p[1] / len};
 }
 
 PointCloud get_trajectory(const std::string& trajectory_csv) 
@@ -77,14 +77,14 @@ PointCloud get_trajectory(const std::string& trajectory_csv)
     return cloud;
 }
 
-size_t get_closest_point(const PointCloud& cloud, const Point& odometry_pose)
+size_t get_closest_point(const PointCloud& cloud, const Eigen::Vector2f& odometry_pose)
 {
     if (cloud.pts.empty()) {
         throw std::runtime_error("Error empty pointcloud");
     }    
     
     //set query point = odometry_point
-    double query_point[2] = { odometry_pose.x, odometry_pose.y };
+    double query_point[2] = { odometry_pose[0], odometry_pose[1] };
     
     // Build KD-Tree
     using KDTree = nanoflann::KDTreeSingleIndexAdaptor<
@@ -103,21 +103,21 @@ size_t get_closest_point(const PointCloud& cloud, const Point& odometry_pose)
     return ret_index[0];
 }
 
-double distance(const Point &a, const Point &b) {
-    double dx = a.x - b.x;
-    double dy = a.y - b.y;
+double distance(const Eigen::Vector2f &a, const Eigen::Vector2f &b) {
+    double dx = a[0] - b[0];
+    double dy = a[1] - b[1];
     return std::sqrt(dx * dx + dy * dy);
 }
 
 double signed_distance(double Ax, double Ay, double Bx, double By, double theta) {
     
-    Vector3 A = { cos(theta), sin(theta), 0 };
+    Eigen::Vector3f A(cos(theta), sin(theta), 0);
     
-    Vector3 B = { Bx - Ax, By - Ay, 0 };
+    Eigen::Vector3f B(Bx - Ax, By - Ay, 0);
     
-    Vector3 cross = crossProduct(A, B);
+    Eigen::Vector3f cross = crossProduct(A, B);
     
-    return cross.z/std::abs(cross.z);
+    return cross[2]/std::abs(cross[2]);
 }
 
 double get_angular_deviation(double angle1, double angle2) {
@@ -150,20 +150,20 @@ double get_yaw(const nav_msgs::msg::Odometry::SharedPtr msg) {
     return atan2(r_matrix(2, 2), r_matrix(0, 2));
 }
 
-std::vector<double> get_tangent_angles(std::vector<Point> points)
+std::vector<double> get_tangent_angles(std::vector<Eigen::Vector2f> points)
 {
     std::vector<double> tangent_angles(points.size());
     
     if (points.size() >= 2) {
         // First point: forward difference.
-        Point diff = subtract(points[1], points[0]);
-        Point tanVec = normalize(diff);
-        tangent_angles[0] = std::atan2(tanVec.y, tanVec.x);
+        Eigen::Vector2f diff = subtract(points[1], points[0]);
+        Eigen::Vector2f tanVec = normalize(diff);
+        tangent_angles[0] = std::atan2(tanVec[1], tanVec[0]);
 
         // Last point: backward difference.
         diff = subtract(points.back(), points[points.size() - 2]);
         tanVec = normalize(diff);
-        tangent_angles.back() = std::atan2(tanVec.y, tanVec.x);
+        tangent_angles.back() = std::atan2(tanVec[1], tanVec[0]);
     }
 
      for (size_t i = 1; i < points.size() - 1; ++i) {
@@ -175,12 +175,12 @@ std::vector<double> get_tangent_angles(std::vector<Point> points)
             tangent_angles[i] = 0;  // Fallback if points coincide
         } else {
             // Compute the central difference divided by the total arc length.
-            Point diff = {
-                (points[i + 1].x - points[i - 1].x) / ds,
-                (points[i + 1].y - points[i - 1].y) / ds
+            Eigen::Vector2f diff = {
+                (points[i + 1][0] - points[i - 1][0]) / ds,
+                (points[i + 1][1] - points[i - 1][1]) / ds
             };
-            Point tanVec = normalize(diff);
-            tangent_angles[i] = std::atan2(tanVec.y, tanVec.x);
+            Eigen::Vector2f tanVec = normalize(diff);
+            tangent_angles[i] = std::atan2(tanVec[1], tanVec[0]);
         }
     }
 
@@ -388,7 +388,7 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     auto start = std::chrono::high_resolution_clock::now();
 
     // Get Data
-    Point odometry_pose = { msg->pose.pose.position.x, msg->pose.pose.position.y };
+    Eigen::Vector2f odometry_pose(msg->pose.pose.position.x, msg->pose.pose.position.y);
     Odometry odometry = {odometry_pose, get_yaw(msg)};
     
     if(!m_is_loaded && !m_is_first_lap) // if instead we are in the first lap the trajectory should come from the callback. We don't care about it for now
@@ -400,7 +400,7 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
 
     // Find closest point to trajectory using KD-Tree from NanoFLANN
     size_t closest_point_index = get_closest_point(m_cloud, odometry_pose);
-    Point closest_point = m_cloud.pts[closest_point_index];
+    Eigen::Vector2f closest_point = m_cloud.pts[closest_point_index];
 
     // Calculate lateral deviation as distance between two points
     double lateral_deviation = distance(odometry_pose, closest_point);
@@ -453,7 +453,7 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     double closest_point_tangent = m_points_tangents[closest_point_index];
 
     // Now i can use the dot product to compute a signed distance and use this sign to establish where I am w.r.t. the race line
-    double lateral_position = signed_distance(closest_point.x, closest_point.y, odometry_pose.x, odometry_pose.y, closest_point_tangent);
+    double lateral_position = signed_distance(closest_point[0], closest_point[1], odometry_pose[0], odometry_pose[1], closest_point_tangent);
     lateral_deviation*=lateral_position;
 
     // Finally calculate the angular deviation between the odometry and the closest point on the trajectory
@@ -513,11 +513,11 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
 
 
     
-    
+
     if(m_is_DEBUG){
-        RCLCPP_INFO(this->get_logger(), "odometry_pose: x=%.2f, y=%.2f", odometry_pose.x, odometry_pose.y);
+        RCLCPP_INFO(this->get_logger(), "odometry_pose: x=%.2f, y=%.2f", odometry_pose[0], odometry_pose[1]);
         RCLCPP_INFO(this->get_logger(), "yaw: %.2f", odometry.yaw);
-        RCLCPP_INFO(this->get_logger(), "Closest Point: x=%.2f, y=%.2f", closest_point.x, closest_point.y);
+        RCLCPP_INFO(this->get_logger(), "Closest Point: x=%.2f, y=%.2f", closest_point[0], closest_point[1]);
         RCLCPP_INFO(this->get_logger(), "steering: %.4f", steering);
         RCLCPP_INFO(this->get_logger(), "x: [%.2f,%.2f,%.2f,%.2f]", x[0],x[1],x[2],x[3]);
         RCLCPP_INFO(this->get_logger(), "duration: %ld ns", duration);
@@ -529,14 +529,14 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
         debby.header.frame_id = "debby";
         debby.child_frame_id = "imu_link";
         debby.header.stamp = msg->header.stamp;
-        debby.pose.pose.position.x = odometry_pose.x;
-        debby.pose.pose.position.y = odometry_pose.y;
+        debby.pose.pose.position.x = odometry_pose[0];
+        debby.pose.pose.position.y = odometry_pose[1];
         debby.pose.pose.orientation.x = msg->pose.pose.orientation.x;
         debby.pose.pose.orientation.y = msg->pose.pose.orientation.y;
         debby.pose.pose.orientation.z = msg->pose.pose.orientation.z;
         debby.pose.pose.orientation.w = msg->pose.pose.orientation.w;
-        debby.twist.twist.linear.x = closest_point.x;
-        debby.twist.twist.linear.y = closest_point.y;
+        debby.twist.twist.linear.x = closest_point[0];
+        debby.twist.twist.linear.y = closest_point[1];
         debby.pose.pose.position.z = v_ld.x();
         debby.twist.twist.linear.z = v_ld.y();
         m_debug_odom_pub->publish(debby);
@@ -551,5 +551,6 @@ void LQR::partial_trajectory_callback(const visualization_msgs::msg::Marker traj
     }
     // TODO: logic to use partial trajectory instead of the trajectory from .csv file
     RCLCPP_INFO(this->get_logger(), "Partial trajectory callback entered");
+
     return;
 }
