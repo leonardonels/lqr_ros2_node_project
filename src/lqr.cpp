@@ -250,9 +250,9 @@ double get_feedforward_term(const double K_3, const double mass, const double lo
     return df_c1*df_c2+df_c3-df_c4;
 }
 
-Eigen::Vector4d LQR::find_optimal_control_vector(double speed_in_module)
+Eigen::Vector4f LQR::find_optimal_control_vector(double speed_in_module)
 {
-    Eigen::Vector4d optimal_control_vector;
+    Eigen::Vector4f optimal_control_vector;
 
     int closest_velocity_index = 0;
     double smallest_velocity_gap = 10e4;
@@ -465,12 +465,12 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     double angular_deviation_speed = msg->twist.twist.angular.z;
 
     // NOW WE HAVE ALL THE COMPONENTS OF THE STATE VECTOR OF THE CAR
-    Eigen::Vector4d x;
+    Eigen::Vector4f x;
     x << lateral_deviation, lateral_deviation_speed, angular_deviation, angular_deviation_speed;
 
     // Now we find the optimal control vector k based on the current speed
     double speed_in_module = std::sqrt(std::pow(msg->twist.twist.linear.x, 2) + std::pow(msg->twist.twist.linear.y, 2));
-    Eigen::Vector4d optimal_control_vector = find_optimal_control_vector(speed_in_module);
+    Eigen::Vector4f optimal_control_vector = find_optimal_control_vector(speed_in_module);
     double K_3 = optimal_control_vector[2];
 
     // Now we compute the theoretical steering
