@@ -2,9 +2,9 @@ lqr_node:
     ros__parameters:
         is_debug_mode: true
         is_first_lap:  false
-        is_constant_speed: true
+        is_constant_speed: false
         target_speed: 5.0
-        trajectory_filename: "/vallelunga_with_curvatures_modified.csv"
+        trajectory_filename: "/vallelunga_x_y_r_v.csv"
         odom_topic: "/odometry"
         control_topic: "/control"
         debug_odom_topic: "/debug/odometry"

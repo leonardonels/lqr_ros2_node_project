@@ -47,7 +47,7 @@ private:
     // methods
     void initialize();
     void load_parameters();
-    Eigen::Vector4d find_optimal_control_vector(double speed);
+    Eigen::Vector4f find_optimal_control_vector(double speed);
     double calculate_throttle(double speed, double target_speed);
 
     // pubs and subs

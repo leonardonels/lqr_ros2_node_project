@@ -51,6 +51,7 @@ install(FILES
   vallelunga1_circuit.csv
   vallelunga1_circuit_undersampled.csv
   vallelunga_with_curvatures_modified.csv
+  vallelunga_x_y_r_v.csv
   DESTINATION share/${PROJECT_NAME}
 )
 
