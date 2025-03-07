@@ -235,7 +235,7 @@ std::tuple<double, Eigen::Vector2d> get_lateral_deviation_components(const doubl
     Eigen::Vector2d v(msg->twist.twist.linear.x, msg->twist.twist.linear.y); // components of the velocity vector w.r.t. the car frame
     Eigen::Vector2d v_new = rot.inverse() * v;  // we use inverse because we want to rotate the velocity vector by -angular_dev
 
-    double lateral_deviation_speed = v_new.y(); // here we find the perpendicular component
+    double lateral_deviation_speed = v_new.x(); // here we find the perpendicular component
 
     // Now reconstruct the perpendicular component into the original frame of reference
     Eigen::Vector2d d_perp(-std::sin(closest_point_tangent), std::cos(closest_point_tangent));
