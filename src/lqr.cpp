@@ -528,16 +528,10 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
         debby.header.frame_id = "debby";
         debby.child_frame_id = "imu_link";
         debby.header.stamp = msg->header.stamp;
-        debby.pose.pose.position.x = odometry_pose[0];
-        debby.pose.pose.position.y = odometry_pose[1];
-        debby.pose.pose.orientation.x = msg->pose.pose.orientation.x;
-        debby.pose.pose.orientation.y = msg->pose.pose.orientation.y;
-        debby.pose.pose.orientation.z = msg->pose.pose.orientation.z;
-        debby.pose.pose.orientation.w = msg->pose.pose.orientation.w;
-        debby.twist.twist.linear.x = closest_point[0];
-        debby.twist.twist.linear.y = closest_point[1];
-        debby.pose.pose.position.z = v_ld.x();
-        debby.twist.twist.linear.z = v_ld.y();
+        debby.pose.pose.position.x = closest_point[0];
+        debby.pose.pose.position.y = closest_point[1];
+        debby.twist.twist.linear.x = v_ld.x();
+        debby.twist.twist.linear.y = v_ld.y();
         m_debug_odom_pub->publish(debby);
     }
 }
