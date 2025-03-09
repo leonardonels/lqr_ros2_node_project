@@ -239,7 +239,7 @@ std::tuple<double, Eigen::Vector2d> get_lateral_deviation_components(const doubl
 
     // Now reconstruct the perpendicular component into the original frame of reference
     Eigen::Vector2d d_perp(-std::sin(closest_point_tangent), std::cos(closest_point_tangent));
-    return {lateral_deviation_speed, v_new.y() * d_perp};
+    return {lateral_deviation_speed, v_new.x() * d_perp};
 }
 
 double get_feedforward_term(const double K_3, const double mass, const double long_speed, const double curvature, const double frontal_lenght, const double rear_lenght, const double C_alpha_rear, const double C_alpha_front){
