@@ -9,6 +9,10 @@ out: [ackermann_msgs/AckermannDrive.msg](https://docs.ros.org/en/noetic/api/acke
 ```
 sudo apt install ros-humble-ackermann-msgs
 ```
+> If colcon is not already present
+```
+sudo apt install ros-humble-ackermann-msgs
+```
 
 ## :gear: How to build & Run
 ```commandline
