@@ -273,7 +273,7 @@ Eigen::Vector4f LQR::find_optimal_control_vector(double speed_in_module)
     return optimal_control_vector;
 }
 
-double LQR::calculate_throttle(double speed_in_module, double target_speed)
+double LQR::calculate_torque(double speed_in_module, double target_speed)
 {
     double speed_difference = target_speed - speed_in_module;
     return speed_difference * m_dummy_proportionality_constant;
@@ -338,16 +338,21 @@ void LQR::initialize()
     // Load parameters
     this->load_parameters();
 
+    rclcpp::QoS qos_rel(rclcpp::KeepLast(1));
+    qos_rel.reliable();
+
+    rclcpp::QoS qos_be(rclcpp::KeepLast(1));
+    qos_be.best_effort();
     // Initialize pubs and subs
-    m_odom_sub = this->create_subscription<nav_msgs::msg::Odometry>(m_odom_topic, 10, std::bind(&LQR::odometry_callback, this, std::placeholders::_1));
-    m_partial_traj_sub = this->create_subscription<visualization_msgs::msg::Marker>(m_partial_traj_topic, 10, std::bind(&LQR::partial_trajectory_callback, this, std::placeholders::_1));
-    m_control_pub = this->create_publisher<ackermann_msgs::msg::AckermannDriveStamped>(m_control_topic, 10);
+    m_odom_sub = this->create_subscription<nav_msgs::msg::Odometry>(m_odom_topic, qos_rel, std::bind(&LQR::odometry_callback, this, std::placeholders::_1));
+    m_partial_traj_sub = this->create_subscription<visualization_msgs::msg::Marker>(m_partial_traj_topic, qos_rel, std::bind(&LQR::partial_trajectory_callback, this, std::placeholders::_1));
+    m_control_pub = this->create_publisher<ackermann_msgs::msg::AckermannDriveStamped>(m_control_topic, qos_be);
 
     if(m_is_DEBUG){
         /* Define QoS for Best Effort messages transport */
-        auto qos = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_sensor_data);
+        auto qos_d = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_sensor_data);
         // Create odom publisher
-        m_debug_odom_pub = this->create_publisher<nav_msgs::msg::Odometry>(m_debug_odom_topic, qos);
+        m_debug_odom_pub = this->create_publisher<nav_msgs::msg::Odometry>(m_debug_odom_topic, qos_d);
     }
 
     m_is_loaded=false;   
@@ -496,22 +501,18 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     {
         target_speed = m_points_target_speed[closest_point_index];
     }
-    double throttle = calculate_throttle(speed_in_module, target_speed);
+    double throttle = calculate_torque(speed_in_module, target_speed); // It is delegated to the simulator to map torque in [-1,1] 
 
     // Now we have the steering and the throttle, we can create a message and publish it
     ackermann_msgs::msg::AckermannDriveStamped control_msg;
     control_msg.header.stamp = this->get_clock()->now();
     control_msg.header.frame_id = "acky"; 
     control_msg.drive.steering_angle = steering;
-    control_msg.drive.acceleration = throttle;
+    control_msg.drive.speed = throttle;
     m_control_pub->publish(control_msg);
     
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
-
-
-
-    
 
     if(m_is_DEBUG){
         RCLCPP_INFO(this->get_logger(), "odometry_pose: x=%.2f, y=%.2f", odometry_pose[0], odometry_pose[1]);
@@ -545,5 +546,10 @@ void LQR::partial_trajectory_callback(const visualization_msgs::msg::Marker traj
     // TODO: logic to use partial trajectory instead of the trajectory from .csv file
     RCLCPP_INFO(this->get_logger(), "Partial trajectory callback entered");
 
+    return;
+}
+
+void LQR::global_trajectory_callback()
+{
     return;
 }

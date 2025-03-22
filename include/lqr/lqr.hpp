@@ -42,19 +42,22 @@ private:
     // callbacks
     void odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
     void partial_trajectory_callback(const visualization_msgs::msg::Marker traj); // during the first lap we work with the partial trajectory published by the local planner
-    // void global_trajectory_callback(); TO BE IMPLEMENTED IN THE FUTURE
+    void global_trajectory_callback(); // same as what partial_trajectory_callback does but is subscribed to a different topic
 
     // methods
     void initialize();
     void load_parameters();
     Eigen::Vector4f find_optimal_control_vector(double speed);
-    double calculate_throttle(double speed, double target_speed);
+    double calculate_torque(double speed, double target_speed);    
 
     // pubs and subs
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr m_odom_sub;
     rclcpp::Subscription<visualization_msgs::msg::Marker>::SharedPtr m_partial_traj_sub; // we will use it in the first_lap mode
-    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr m_debug_odom_pub;
-    rclcpp::Publisher<ackermann_msgs::msg::AckermannDriveStamped>::SharedPtr m_control_pub;
+    rclcpp::Subscription<visualization_msgs::msg::Marker>::SharedPtr m_global_traj_sub; // get the full trajectory once at the start of the second lap
+
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr m_debug_odom_pub; // for visualization
+    // N.B. this message is what the simulator needs, the actual message will be sent to the kria via can
+    rclcpp::Publisher<ackermann_msgs::msg::AckermannDriveStamped>::SharedPtr m_control_pub; 
     
     //topics
     std::string m_odom_topic;
