@@ -513,7 +513,7 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
         target_speed = m_points_target_speed[closest_point_index];
     }
     
-    if (speed_in_module == 0)
+    if (speed_in_module < 1/*ms*/)
     {
         m_cumulative_error = 0; // I don't want my integral term to accumulate when I am stationary eg. at the start of the mission
     }
