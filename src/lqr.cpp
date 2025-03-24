@@ -276,7 +276,8 @@ Eigen::Vector4f LQR::find_optimal_control_vector(double speed_in_module)
 double LQR::calculate_torque(double speed_in_module, double target_speed)
 {
     double speed_difference = target_speed - speed_in_module;
-    return speed_difference * m_p; // + m_i * m_cumulative_error + m_d * (speed_difference - m_previous_speed_difference);
+    m_cumulative_error += speed_difference;
+    return speed_difference * m_p + m_i * m_cumulative_error; // m_d * (speed_difference - m_previous_speed_difference); lets just use a PI for now
 }
 
 void LQR::load_parameters()
@@ -364,6 +365,7 @@ void LQR::initialize()
     }
 
     m_is_loaded=false;   
+    m_cumulative_error = 0.0;
 }
 
 
@@ -510,6 +512,12 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     {
         target_speed = m_points_target_speed[closest_point_index];
     }
+    
+    if (speed_in_module == 0)
+    {
+        m_cumulative_error = 0; // I don't want my integral term to accumulate when I am stationary eg. at the start of the mission
+    }
+
     double throttle = calculate_torque(speed_in_module, target_speed); // It is delegated to the simulator to map torque in [-1,1] 
 
     // Now we have the steering and the throttle, we can create a message and publish it

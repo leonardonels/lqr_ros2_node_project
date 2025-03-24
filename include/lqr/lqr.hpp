@@ -89,6 +89,7 @@ private:
     double m_p;
     double m_i;
     double m_d;
+    double m_cumulative_error;
 };
 
 #endif
