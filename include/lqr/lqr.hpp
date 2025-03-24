@@ -85,7 +85,10 @@ private:
     double rear_length;
     double C_alpha_front;
     double C_alpha_rear;
-    double m_dummy_proportionality_constant;
+    // PID parameters
+    double m_p;
+    double m_i;
+    double m_d;
 };
 
 #endif

@@ -276,7 +276,7 @@ Eigen::Vector4f LQR::find_optimal_control_vector(double speed_in_module)
 double LQR::calculate_torque(double speed_in_module, double target_speed)
 {
     double speed_difference = target_speed - speed_in_module;
-    return speed_difference * m_dummy_proportionality_constant;
+    return speed_difference * m_p; // + m_i * m_cumulative_error + m_d * (speed_difference - m_previous_speed_difference);
 }
 
 void LQR::load_parameters()
@@ -294,7 +294,7 @@ void LQR::load_parameters()
     this->declare_parameter<std::string>("debug_odom_topic", "");
     m_debug_odom_topic = this->get_parameter("debug_odom_topic").get_value<std::string>();
 
-    // hyperparams
+    // settings
     this->declare_parameter<bool>("is_first_lap", false);
     m_is_first_lap = this->get_parameter("is_first_lap").get_value<bool>();
 
@@ -307,15 +307,12 @@ void LQR::load_parameters()
     this->declare_parameter<bool>("is_debug_mode", true);
     m_is_DEBUG = this->get_parameter("is_debug_mode").get_value<bool>();
 
-    // actual params
+    // car physical parameters
     this->declare_parameter<std::vector<std::string>>("vectors_k", std::vector<std::string>{});
     m_raw_vectors_k = this->get_parameter("vectors_k").as_string_array();
 
     this->declare_parameter<double>("target_speed", 0.0);
     m_target_speed = this->get_parameter("target_speed").get_value<double>();
-
-    this->declare_parameter<double>("dummy_proportionality_constant", 0.0);
-    m_dummy_proportionality_constant = this->get_parameter("dummy_proportionality_constant").get_value<double>();
 
     this->declare_parameter<double>("mass", 0.0);
     m_mass = this->get_parameter("mass").get_value<double>();
@@ -331,6 +328,17 @@ void LQR::load_parameters()
 
     this->declare_parameter<double>("C_alpha_rear", 0.0);
     C_alpha_rear = this->get_parameter("C_alpha_rear").get_value<double>();
+
+    // PID parameters
+    this->declare_parameter<double>("PID_p", 0.0);
+    m_p = this->get_parameter("PID_p").get_value<double>();
+
+    this->declare_parameter<double>("PID_i", 0.0);
+    m_i = this->get_parameter("PID_i").get_value<double>();
+
+    this->declare_parameter<double>("PID_d", 0.0);
+    m_d = this->get_parameter("PID_d").get_value<double>();
+
 }
 
 void LQR::initialize()
@@ -439,10 +447,11 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
         }
     }
 
-    // At this point I have the closest point on the trajectory and the lateral deviation from the odometry to the trajectory
-    // Now I need to find the angular deviation between the odometry and the trajectory
+    // At this point I have the closest point on the trajectory
+    // Now I need to find the components of the state vector of the car
+
     // Compute for every point on the trajectory the tangent angle
-    if (!m_is_loaded) // we only want to do it once
+    if (!m_is_loaded) // We only want to do it once
     {
         m_points_tangents = get_tangent_angles(m_cloud.pts); 
 
