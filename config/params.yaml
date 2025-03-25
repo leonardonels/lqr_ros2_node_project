@@ -3,12 +3,12 @@ lqr_node:
         # SETTINGS
         is_debug_mode: true
         is_first_lap:  false
-        is_constant_speed: false
-        target_speed: 5.0
+        is_constant_speed: true
+        target_speed: 0.1
         # SUPPORT FILES
         trajectory_filename: "/vallelunga_x_y_r_v.csv"
-        odom_topic: "/odometry"
-        control_topic: "/control"
+        odom_topic: "/simulation_state"
+        control_topic: "/car_controls"
         debug_odom_topic: "/debug/odometry"
         partial_traj_topic: "/planning/centerline"
         # CAR PHYSICAL PARAMETERS

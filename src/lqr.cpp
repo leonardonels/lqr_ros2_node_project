@@ -355,7 +355,7 @@ void LQR::initialize()
     // Initialize pubs and subs
     m_odom_sub = this->create_subscription<nav_msgs::msg::Odometry>(m_odom_topic, qos_rel, std::bind(&LQR::odometry_callback, this, std::placeholders::_1));
     m_partial_traj_sub = this->create_subscription<visualization_msgs::msg::Marker>(m_partial_traj_topic, qos_rel, std::bind(&LQR::partial_trajectory_callback, this, std::placeholders::_1));
-    m_control_pub = this->create_publisher<ackermann_msgs::msg::AckermannDriveStamped>(m_control_topic, qos_be);
+    m_control_pub = this->create_publisher<ackermann_msgs::msg::AckermannDriveStamped>(m_control_topic, qos_rel);
 
     if(m_is_DEBUG){
         /* Define QoS for Best Effort messages transport */
