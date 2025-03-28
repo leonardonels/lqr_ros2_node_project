@@ -4,9 +4,9 @@ lqr_node:
         is_debug_mode: true
         is_first_lap:  false
         is_constant_speed: true
-        target_speed: 0.1
+        target_speed: 0.2
         # SUPPORT FILES
-        trajectory_filename: "/varano_autocross_x_y_r_v.csv"
+        trajectory_filename: "/varano_x_y_r_v.csv"
         odom_topic: "/simulation_state"
         control_topic: "/car_controls"
         debug_odom_topic: "/debug/odometry"
@@ -21,9 +21,9 @@ lqr_node:
         PID_p:  1.0
         PID_i:  0.0
         PID_d:  0.0
-        # CONTROL VECTORS
+        # CONTROL VECTORS 
         vectors_k:
-          - "5.0 -0.5381 -0.0456 4.0650 0.3252"
-          - "10.0 -0.4542 -0.0648 4.6136 0.4894"
-          - "15.0 -0.4144 -0.0797 5.0552 0.5823"
-          - "20.0 -0.3920 -0.0916 5.3822 0.6425"
+          - "5.0 -3.6226 -0.2393 12.5726 1.0429"
+          - "10.0 -3.6226 -0.2393 12.5726 1.0429"
+          - "15.0 -3.6226 -0.2393 12.5726 1.0429"
+          - "20.0 -3.6226 -0.2393 12.5726 1.0429"

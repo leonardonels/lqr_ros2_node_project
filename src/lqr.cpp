@@ -8,6 +8,8 @@
 #include <eigen3/Eigen/Geometry>
 #include <nav_msgs/msg/odometry.hpp>
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
 #include "lqr/lqr.hpp"
 #include "nanoflann/nanoflann.hpp"
 
@@ -140,14 +142,15 @@ double get_angular_deviation(double angle1, double angle2) {
 }
 
 double get_yaw(const nav_msgs::msg::Odometry::SharedPtr msg) {
-    Eigen::Quaterniond q(msg->pose.pose.orientation.x,
-                         msg->pose.pose.orientation.y,
-                         msg->pose.pose.orientation.z,
-                         msg->pose.pose.orientation.w);
-    
-    Eigen::Matrix3d r_matrix = q.toRotationMatrix();
-    
-    return atan2(r_matrix(2, 2), r_matrix(0, 2));
+    tf2::Quaternion q;
+    q.setX(msg->pose.pose.orientation.x);
+    q.setY(msg->pose.pose.orientation.y);
+    q.setZ(msg->pose.pose.orientation.z);
+    q.setW(msg->pose.pose.orientation.w);
+  
+    double roll, pitch, yaw;
+    tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
+    return yaw;
 }
 
 std::vector<double> get_tangent_angles(std::vector<Eigen::Vector2f> points)
@@ -230,16 +233,13 @@ std::vector<double> get_csv_column(const std::string& trajectory_csv, int column
 
 std::tuple<double, Eigen::Vector2d> get_lateral_deviation_components(const double angular_dev, const double closest_point_tangent, const nav_msgs::msg::Odometry::SharedPtr msg)
 {
-    // Rotate the velocity vector from the car frame to the tangent frame by using the angular deviation
-    Eigen::Rotation2D<double> rot(angular_dev);   
-    Eigen::Vector2d v(msg->twist.twist.linear.x, msg->twist.twist.linear.y); // components of the velocity vector w.r.t. the car frame
-    Eigen::Vector2d v_new = rot.inverse() * v;  // we use inverse because we want to rotate the velocity vector by -angular_dev
-
-    double lateral_deviation_speed = v_new.x(); // here we find the perpendicular component
+    double Vx = -msg->twist.twist.linear.y;
+    double Vy = msg->twist.twist.linear.x;
+    double lateral_deviation_speed = Vx*std::cos(angular_dev) + Vy*std::sin(angular_dev); // this is the speed of the car in the direction of the tangent line
 
     // Now reconstruct the perpendicular component into the original frame of reference
     Eigen::Vector2d d_perp(-std::sin(closest_point_tangent), std::cos(closest_point_tangent));
-    return {lateral_deviation_speed, v_new.x() * d_perp};
+    return {lateral_deviation_speed, lateral_deviation_speed * d_perp};
 }
 
 double get_feedforward_term(const double K_3, const double mass, const double long_speed, const double curvature, const double frontal_lenght, const double rear_lenght, const double C_alpha_rear, const double C_alpha_front){
@@ -490,7 +490,7 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     double K_3 = optimal_control_vector[2];
 
     // Now we compute the theoretical steering
-    double steering = -optimal_control_vector.dot(x);
+    double steering = optimal_control_vector.dot(x) * 0.1; //questa è una gradissima porcata ma funziona
 
     // Now we need to calculate Vx and and the curvature radious
     // Be very careful that Vx is expressed in the global frame but we need it in the car reference frame so we need to make again the rotation, this time w.r.t. the yaw
@@ -535,9 +535,10 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
         RCLCPP_INFO(this->get_logger(), "odometry_pose: x=%.2f, y=%.2f", odometry_pose[0], odometry_pose[1]);
         RCLCPP_INFO(this->get_logger(), "yaw: %.2f", odometry.yaw);
         RCLCPP_INFO(this->get_logger(), "Closest Point: x=%.2f, y=%.2f", closest_point[0], closest_point[1]);
-        RCLCPP_INFO(this->get_logger(), "steering: %.4f", steering);
+        RCLCPP_INFO(this->get_logger(), "steering: %.4f, delta_f = %.4f", steering, delta_f);
         RCLCPP_INFO(this->get_logger(), "x: [%.2f,%.2f,%.2f,%.2f]", x[0],x[1],x[2],x[3]);
         RCLCPP_INFO(this->get_logger(), "duration: %ld ns", duration);
+        RCLCPP_INFO(this->get_logger(), "k: [%.2f,%.2f,%.2f,%.2f]", optimal_control_vector[0],optimal_control_vector[1],optimal_control_vector[2],optimal_control_vector[3]);
     }
 
     if(m_is_DEBUG)

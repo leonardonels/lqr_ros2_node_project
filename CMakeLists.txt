@@ -20,6 +20,8 @@ find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(ackermann_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 include_directories(include)
@@ -32,6 +34,8 @@ ament_target_dependencies(
   nav_msgs
   ackermann_msgs
   visualization_msgs
+  tf2
+  tf2_ros
   Eigen3
 )
 
@@ -48,12 +52,13 @@ DESTINATION lib/${PROJECT_NAME}
 )
 
 install(FILES
-  vallelunga1_circuit.csv
-  vallelunga1_circuit_undersampled.csv
-  vallelunga_with_curvatures_modified.csv
-  vallelunga_x_y_r_v.csv
-  varano_autocross.csv
-  varano_autocross_x_y_r_v.csv
+  circuits/vallelunga1_circuit.csv
+  circuits/vallelunga1_circuit_undersampled.csv
+  circuits/vallelunga_with_curvatures_modified.csv
+  circuits/vallelunga_x_y_r_v.csv
+  circuits/varano_autocross.csv
+  circuits/varano_autocross_x_y_r_v.csv
+  circuits/varano_x_y_r_v.csv
   DESTINATION share/${PROJECT_NAME}
 )
 
