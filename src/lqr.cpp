@@ -233,8 +233,8 @@ std::vector<double> get_csv_column(const std::string& trajectory_csv, int column
 
 std::tuple<double, Eigen::Vector2d> get_lateral_deviation_components(const double angular_dev, const double closest_point_tangent, const nav_msgs::msg::Odometry::SharedPtr msg)
 {
-    double Vx = -msg->twist.twist.linear.y;
-    double Vy = msg->twist.twist.linear.x;
+    double Vx = msg->twist.twist.linear.x;
+    double Vy = msg->twist.twist.linear.y;
     double lateral_deviation_speed = Vx*std::cos(angular_dev) + Vy*std::sin(angular_dev); // this is the speed of the car in the direction of the tangent line
 
     // Now reconstruct the perpendicular component into the original frame of reference
@@ -493,7 +493,6 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     double steering = optimal_control_vector.dot(x) * 0.1; //questa è una gradissima porcata ma funziona
 
     // Now we need to calculate Vx and and the curvature radious
-    // Be very careful that Vx is expressed in the global frame but we need it in the car reference frame so we need to make again the rotation, this time w.r.t. the yaw
     double Vx = msg->twist.twist.linear.x;
     double R_c = m_points_curvature_radius[closest_point_index];
 
@@ -523,7 +522,7 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     // Now we have the steering and the throttle, we can create a message and publish it
     ackermann_msgs::msg::AckermannDriveStamped control_msg;
     control_msg.header.stamp = this->get_clock()->now();
-    control_msg.header.frame_id = "acky"; 
+    control_msg.header.frame_id = "map"; 
     control_msg.drive.steering_angle = steering;
     control_msg.drive.speed = throttle;
     m_control_pub->publish(control_msg);
