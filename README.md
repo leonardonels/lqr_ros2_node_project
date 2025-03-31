@@ -11,7 +11,7 @@ sudo apt install ros-humble-ackermann-msgs
 ```
 > If colcon is not already present
 ```
-sudo apt install ros-humble-ackermann-msgs
+sudo apt install python3-colcon-common-extensions
 ```
 
 ## :gear: How to build & Run
