@@ -235,7 +235,7 @@ std::tuple<double, Eigen::Vector2d> get_lateral_deviation_components(const doubl
 {
     double Vx = msg->twist.twist.linear.x;
     double Vy = msg->twist.twist.linear.y;
-    double lateral_deviation_speed = Vx*std::cos(angular_dev) + Vy*std::sin(angular_dev); // this is the speed of the car in the direction of the tangent line
+    double lateral_deviation_speed = Vy*std::cos(angular_dev) + Vx*std::sin(angular_dev); // this is the speed of the car in the direction of the tangent line
 
     // Now reconstruct the perpendicular component into the original frame of reference
     Eigen::Vector2d d_perp(-std::sin(closest_point_tangent), std::cos(closest_point_tangent));
@@ -490,7 +490,7 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     double K_3 = optimal_control_vector[2];
 
     // Now we compute the theoretical steering
-    double steering = optimal_control_vector.dot(x) * 0.1; //questa è una gradissima porcata ma funziona
+    double steering = optimal_control_vector.dot(x); 
 
     // Now we need to calculate Vx and and the curvature radious
     double Vx = msg->twist.twist.linear.x;
@@ -537,19 +537,19 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
         RCLCPP_INFO(this->get_logger(), "steering: %.4f, delta_f = %.4f", steering, delta_f);
         RCLCPP_INFO(this->get_logger(), "x: [%.2f,%.2f,%.2f,%.2f]", x[0],x[1],x[2],x[3]);
         RCLCPP_INFO(this->get_logger(), "duration: %ld ns", duration);
-        RCLCPP_INFO(this->get_logger(), "k: [%.2f,%.2f,%.2f,%.2f]", optimal_control_vector[0],optimal_control_vector[1],optimal_control_vector[2],optimal_control_vector[3]);
+        // RCLCPP_INFO(this->get_logger(), "k: [%.2f,%.2f,%.2f,%.2f]", optimal_control_vector[0],optimal_control_vector[1],optimal_control_vector[2],optimal_control_vector[3]);
     }
 
-    if(m_is_DEBUG)
+    if(m_is_DEBUG) // publish state vector data
     {
         nav_msgs::msg::Odometry debby;
-        debby.header.frame_id = "debby";
+        debby.header.frame_id = "debug";
         debby.child_frame_id = "imu_link";
         debby.header.stamp = msg->header.stamp;
-        debby.pose.pose.position.x = closest_point[0];
-        debby.pose.pose.position.y = closest_point[1];
-        debby.twist.twist.linear.x = v_ld.x();
-        debby.twist.twist.linear.y = v_ld.y();
+        debby.pose.pose.position.y = x[0]; // here we put the lateral deviation on the y axis
+        debby.twist.twist.linear.y = x[1]; // here we put the lateral deviation speed on the y axis
+        debby.pose.pose.orientation.z = x[2]; // here we put the angular deviation 
+        debby.twist.twist.angular.z = x[3]; // here we put the angular deviation speed
         m_debug_odom_pub->publish(debby);
     }
 }
