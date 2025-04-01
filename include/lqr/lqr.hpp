@@ -55,6 +55,7 @@ private:
     rclcpp::Subscription<visualization_msgs::msg::Marker>::SharedPtr m_partial_traj_sub; // we will use it in the first_lap mode
     rclcpp::Subscription<visualization_msgs::msg::Marker>::SharedPtr m_global_traj_sub; // get the full trajectory once at the start of the second lap
 
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr m_debug_pub; // for visualization
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr m_debug_odom_pub; // for visualization
     // N.B. this message is what the simulator needs, the actual message will be sent to the kria via can
     rclcpp::Publisher<ackermann_msgs::msg::AckermannDriveStamped>::SharedPtr m_control_pub; 
@@ -63,6 +64,7 @@ private:
     std::string m_odom_topic;
     std::string m_control_topic;
     std::string m_partial_traj_topic;
+    std::string m_debug_topic;
     std::string m_debug_odom_topic;
    
     // class members

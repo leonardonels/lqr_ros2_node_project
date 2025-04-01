@@ -9,7 +9,8 @@ lqr_node:
         trajectory_filename: "/varano_x_y_r_v.csv"
         odom_topic: "/simulation_state"
         control_topic: "/car_controls"
-        debug_odom_topic: "/debug/odometry"
+        debug_topic: "/debug/odometry"
+        debug_odom_topic: "/debug/debby"
         partial_traj_topic: "/planning/centerline"
         # CAR PHYSICAL PARAMETERS
         car_mass: 270.0
