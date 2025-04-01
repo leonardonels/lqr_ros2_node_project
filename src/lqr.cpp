@@ -292,6 +292,9 @@ void LQR::load_parameters()
     this->declare_parameter<std::string>("partial_traj_topic", "");
     m_partial_traj_topic = this->get_parameter("partial_traj_topic").get_value<std::string>();
 
+    this->declare_parameter<std::string>("debug_topic", "");
+    m_debug_topic = this->get_parameter("debug_topic").get_value<std::string>();
+
     this->declare_parameter<std::string>("debug_odom_topic", "");
     m_debug_odom_topic = this->get_parameter("debug_odom_topic").get_value<std::string>();
 
@@ -361,6 +364,7 @@ void LQR::initialize()
         /* Define QoS for Best Effort messages transport */
         auto qos_d = rclcpp::QoS(rclcpp::KeepLast(1), rmw_qos_profile_sensor_data);
         // Create odom publisher
+        m_debug_pub = this->create_publisher<nav_msgs::msg::Odometry>(m_debug_topic, qos_d);
         m_debug_odom_pub = this->create_publisher<nav_msgs::msg::Odometry>(m_debug_odom_topic, qos_d);
     }
 
@@ -550,7 +554,17 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
         debby.twist.twist.linear.y = x[1]; // here we put the lateral deviation speed on the y axis
         debby.pose.pose.orientation.z = x[2]; // here we put the angular deviation 
         debby.twist.twist.angular.z = x[3]; // here we put the angular deviation speed
-        m_debug_odom_pub->publish(debby);
+        m_debug_pub->publish(debby);
+
+        nav_msgs::msg::Odometry nn_debby;
+        nn_debby.header.frame_id = "debug";
+        nn_debby.child_frame_id = "imu_link";
+        nn_debby.header.stamp = msg->header.stamp;
+        nn_debby.pose.pose.position.x = closest_point[0];
+        nn_debby.pose.pose.position.y = closest_point[1];
+        nn_debby.twist.twist.linear.x = v_ld.x();
+        nn_debby.twist.twist.linear.y = v_ld.y();
+        m_debug_odom_pub->publish(nn_debby);
     }
 }
 
