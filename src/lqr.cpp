@@ -389,7 +389,7 @@ LQR::LQR() : Node("lqr_node")
 
     for (size_t i = 0; i < m_k_pair.size(); i++) {
         if (m_k_pair[i].second.size() == 4) {
-            RCLCPP_INFO(this->get_logger(), "k%zu: %f, %f", i + 1, m_k_pair[i].first, m_k_pair[i].second[3]);
+            RCLCPP_INFO(this->get_logger(), "k%zu: %f, %f, %f, %f, %f ", i + 1, m_k_pair[i].first, m_k_pair[i].second[0], m_k_pair[i].second[1], m_k_pair[i].second[2], m_k_pair[i].second[3]);
         } else {
             RCLCPP_WARN(this->get_logger(), "k%zu: %f, each k vector MUST have EXACTLY 4 elements", i + 1, m_k_pair[i].first);
         }
