@@ -501,7 +501,7 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     double R_c = m_points_curvature_radius[closest_point_index];
 
     // Now we compute the feedforward term
-    double delta_f = get_feedforward_term(K_3, m_mass, Vx, R_c, front_length, rear_length, C_alpha_rear, C_alpha_front);
+    double delta_f = get_feedforward_term(K_3, m_mass, Vx, 1/R_c, front_length, rear_length, C_alpha_rear, C_alpha_front);
     
     steering = steering - delta_f; // this is my actual steering target
 
