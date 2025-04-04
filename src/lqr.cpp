@@ -494,7 +494,7 @@ void LQR::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
     double K_3 = optimal_control_vector[2];
 
     // Now we compute the theoretical steering
-    double steering = optimal_control_vector.dot(x); 
+    double steering = -optimal_control_vector.dot(x); 
 
     // Now we need to calculate Vx and and the curvature radious
     double Vx = msg->twist.twist.linear.x;
